@@ -24,6 +24,12 @@ class GemVersionDoc < RepoDocCommon
     fix_gem_docs
   end
 
+  def build_cloudrad
+    FileUtils.remove_dir @output_dir if Dir.exists? @output_dir
+    Dir.chdir @input_dir { cmd "rake cloudrad" }
+    @metadata.build @output_dir
+  end
+
   def fix_gem_docs
     return unless @input_dir.to_s.include? "google-cloud-trace"
 
@@ -49,6 +55,21 @@ class GemVersionDoc < RepoDocCommon
       ]
       cmd "python3 -m docuploader upload . #{opts.join ' '}"
     end
+  end
+
+  def upload_cloudrad
+    Dir.chdir @output_dir do
+      opts = [
+        "--credentials=#{ENV['KOKORO_KEYSTORE_DIR']}/73713_docuploader_service_account",
+        "--staging-bucket=#{ENV.fetch 'V2_STAGING_BUCKET', 'docs-staging'}",
+        "--metadata-file=./docs.metadata"
+      ]
+      cmd "python3 -m docuploader upload . #{opts.join ' '}"
+    end
+    python3 -m docuploader upload docs/_build/html/docfx_yaml
+      --metadata-file docs.metadata
+      --destination-prefix docfx
+      --staging-bucket "${}"
   end
 
   def publish
